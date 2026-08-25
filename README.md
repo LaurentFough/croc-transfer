@@ -84,10 +84,23 @@ appear in the shell's widget-settings UI as that lands.)
   variable (croc's own recommended form), not argv.
 - The plugin keeps **no state and no transfer history** — a transfer's
   only record is its notification. Codes live in memory (and your
-  clipboard) for the transfer's lifetime.
-- Deliberately no browser/web receive link: croc's protocol has no
-  browser story, and a bridge server would have to hold decrypted files —
-  breaking the end-to-end claim — so it's out of scope on purpose.
+  clipboard) for the transfer's lifetime, and the plugin never writes a
+  state or log file of its own.
+- **Received files land in `~/Downloads`, nothing else.** The plugin runs
+  croc with `~/Downloads` as the working directory and never executes what
+  arrives. croc itself refuses malicious sender filenames — path traversal
+  and symlinks that point outside the transfer are rejected (verified
+  against croc 11.x: an escaping symlink aborts the receive with "refusing
+  files"). Only accept codes from people you trust, since a very large
+  transfer will fill your disk like any download.
+- The plugin passes every external value — file paths, the receive code,
+  a custom relay — to croc as separate arguments, never spliced into a
+  shell string; the code is additionally restricted to letters, digits,
+  and dashes.
+- This plugin does not ship its own browser/web receive bridge: that would
+  mean a server holding decrypted files, breaking the end-to-end claim.
+  (croc upstream offers its own web helper; that's croc's, not this
+  plugin's, and this plugin never routes your files through it.)
 
 ## Remove
 
