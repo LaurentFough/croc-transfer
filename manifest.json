@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.alexdont.croc-transfer",
+  "name": "Croc Transfer",
+  "version": "0.1.0",
+  "author": "alexdont",
+  "license": "MIT",
+  "description": "Send a file to anyone, anywhere, without a terminal: drop it on the bar, paste the code to your recipient, done. End-to-end encrypted via croc — no accounts, no shared network. Receive side included",
+  "kinds": [
+    "service",
+    "bar-widget",
+    "overlay"
+  ],
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml",
+    "overlay": "Overlay.qml"
+  },
+  "barWidget": {
+    "displayName": "Croc Transfer",
+    "description": "Drop files on it to send them with croc; click to open the transfer card. Shows live progress.",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "schema": [
+      {
+        "key": "relay",
+        "type": "string",
+        "label": "Custom croc relay",
+        "description": "host:port of your own croc relay. Empty uses croc's default public relay (which only ever sees encrypted traffic).",
+        "defaultValue": ""
+      }
+    ]
+  }
+}
