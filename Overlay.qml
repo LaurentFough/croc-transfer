@@ -182,12 +182,20 @@ Item {
     command: ["sh", "-c", "{ omarchy-file-select --directory --title 'Download location' 2>/dev/null || true; } | head -c 4096"]
     stdout: StdioCollector {
       onStreamFinished: {
-        var path = text.trim()
+        var raw = text.trim()
+        if (!raw) { dirPickProc.running = false; return }
+        // Accept file:// URIs and plain absolute paths, and handle multiple lines;
+        // prefer the first non-empty line.
+        var line = raw.split("\n")[0].trim()
+        var path = line
+        if (path.indexOf("file://") === 0) path = path.replace(/^file:\\/\\//, "")
+        try { path = decodeURIComponent(path) } catch (e) { /* ignore */ }
         if (path && path.charAt(0) === "/" && path.length > 0) {
           root.downloadLocation = path
           root.setSetting("downloadLocation", path)
           downloadPathInput.text = path
         }
+        dirPickProc.running = false
       }
     }
   }
