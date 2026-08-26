@@ -60,10 +60,10 @@ BarWidget {
     bar: root.bar
     text: {
       var s = root.svc
-      if (!s || s.phase === "idle") return "󰒊"
-      if (s.phase === "waiting") return "󰒊 ···"
-      if (s.progressPct >= 0) return "󰒊 " + s.progressPct + "%"
-      return "󰒊 ···"
+      if (!s || s.phase === "idle") return "🐊"
+      if (s.phase === "waiting") return "🐊 ···"
+      if (s.progressPct >= 0) return "🐊 " + s.progressPct + "%"
+      return "🐊 ···"
     }
     horizontalMargin: 7.5
     onPressed: function(b) {
