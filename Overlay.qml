@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import Qt.labs.settings
 import qs.Commons
 import qs.Ui
 
@@ -38,22 +39,40 @@ Item {
   property int contentMargin: Style.spacing.panelPadding
   property int cardWidth: Math.min(Style.space(440), panel.width - Style.gapsOut * 2)
 
+  // Local settings storage — persistent fallback when service doesn't provide it
+  Settings {
+    id: appSettings
+    property string downloadLocation: "~/Downloads"
+  }
+
   // Download location setting — defaults to ~/Downloads
   property string downloadLocation: root.setting("downloadLocation", "~/Downloads")
 
+  Component.onCompleted: {
+    // Initialize download location from persistent storage
+    root.downloadLocation = root.setting("downloadLocation", "~/Downloads")
+  }
+
   function setting(key, defaultValue) {
-    // Placeholder for getting settings from shell/service
-    // This should be implemented by the hosting shell/service
+    // Try service first (for host integration)
     if (root.service && typeof root.service.setting === "function") {
       return root.service.setting(key, defaultValue)
+    }
+    // Fallback to local Qt.labs.settings
+    if (key === "downloadLocation") {
+      return appSettings.downloadLocation || defaultValue
     }
     return defaultValue
   }
 
   function setSetting(key, value) {
-    // Placeholder for persisting settings
+    // Notify service if it supports setting persistence
     if (root.service && typeof root.service.setSetting === "function") {
       root.service.setSetting(key, value)
+    }
+    // Always persist locally as fallback
+    if (key === "downloadLocation") {
+      appSettings.downloadLocation = value
     }
   }
 
@@ -116,13 +135,31 @@ Item {
   }
 
   function browseDownloadLocation() {
-    // Open file browser for directory selection
+    // Try service first (for host integration)
     if (root.service && typeof root.service.pickDirectory === "function") {
       root.service.pickDirectory(function(selectedPath) {
         if (selectedPath) {
           root.downloadLocation = selectedPath
           root.setSetting("downloadLocation", selectedPath)
           downloadPathInput.text = selectedPath
+        }
+      })
+    } else {
+      // Fallback: use system file dialog (kdialog for KDE, zenity for GNOME)
+      var expandedPath = root.expandPath(root.downloadLocation)
+      var cmd = [
+        "bash", "-c",
+        "kdialog --getexistingdirectory \"" + expandedPath + "\" 2>/dev/null || zenity --file-selection --directory --filename=\"" + expandedPath + "\" 2>/dev/null"
+      ]
+      var proc = Quickshell.exec(cmd)
+      proc.onFinished.connect(function(code) {
+        if (code === 0) {
+          var path = String(proc.stdout).trim()
+          if (path && path.length > 0) {
+            root.downloadLocation = path
+            root.setSetting("downloadLocation", path)
+            downloadPathInput.text = path
+          }
         }
       })
     }
