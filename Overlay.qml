@@ -38,6 +38,25 @@ Item {
   property int contentMargin: Style.spacing.panelPadding
   property int cardWidth: Math.min(Style.space(440), panel.width - Style.gapsOut * 2)
 
+  // Download location setting — defaults to ~/Downloads
+  property string downloadLocation: root.setting("downloadLocation", "~/Downloads")
+
+  function setting(key, defaultValue) {
+    // Placeholder for getting settings from shell/service
+    // This should be implemented by the hosting shell/service
+    if (root.service && typeof root.service.setting === "function") {
+      return root.service.setting(key, defaultValue)
+    }
+    return defaultValue
+  }
+
+  function setSetting(key, value) {
+    // Placeholder for persisting settings
+    if (root.service && typeof root.service.setSetting === "function") {
+      root.service.setSetting(key, value)
+    }
+  }
+
   function open(payloadJson) {
     root.opened = true
     if (root.service) root.service.probeDeps()
@@ -85,6 +104,27 @@ Item {
     if (root.service && c) {
       root.service.receive(c)
       receiveInput.text = ""
+    }
+  }
+
+  function expandPath(path) {
+    // Simple tilde expansion
+    if (path.indexOf("~") === 0) {
+      return path.replace(/^~/, Quickshell.env("HOME") || "/root")
+    }
+    return path
+  }
+
+  function browseDownloadLocation() {
+    // Open file browser for directory selection
+    if (root.service && typeof root.service.pickDirectory === "function") {
+      root.service.pickDirectory(function(selectedPath) {
+        if (selectedPath) {
+          root.downloadLocation = selectedPath
+          root.setSetting("downloadLocation", selectedPath)
+          downloadPathInput.text = selectedPath
+        }
+      })
     }
   }
 
@@ -362,11 +402,96 @@ Item {
             }
 
             Text {
-              text: "Files land in ~/Downloads."
+              text: "Files land in " + root.downloadLocation + "."
               color: root.foreground
               opacity: 0.5
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
+            }
+          }
+
+          // ---- Idle: download location settings ----
+          Column {
+            visible: !root.busy
+            width: parent.width
+            spacing: Style.space(4)
+
+            Text {
+              text: "Download Location"
+              color: root.selectedText
+              opacity: 0.85
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              font.bold: true
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.spacing.md
+
+              Rectangle {
+                width: parent.width - browseBtn.width - Style.spacing.md
+                height: Style.space(30)
+                radius: root.cornerRadius / 2
+                color: root.selectedBackground
+                opacity: downloadPathInput.activeFocus ? 1 : 0.7
+
+                TextInput {
+                  id: downloadPathInput
+                  anchors.fill: parent
+                  anchors.leftMargin: Style.spacing.md
+                  anchors.rightMargin: Style.spacing.md
+                  verticalAlignment: TextInput.AlignVCenter
+                  color: root.selectedText
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                  selectByMouse: true
+                  text: root.downloadLocation
+                  onEditingFinished: {
+                    if (downloadPathInput.text) {
+                      root.downloadLocation = downloadPathInput.text
+                      root.setSetting("downloadLocation", downloadPathInput.text)
+                    }
+                  }
+                  Keys.onEscapePressed: { downloadPathInput.text = root.downloadLocation; keyCatcher.forceActiveFocus() }
+
+                  Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !downloadPathInput.text && !downloadPathInput.activeFocus
+                    text: "path for received files…"
+                    color: root.selectedText
+                    opacity: 0.5
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                  }
+                }
+              }
+
+              Rectangle {
+                id: browseBtn
+                width: browseBtnText.implicitWidth + Style.spacing.md * 2
+                height: Style.space(30)
+                radius: root.cornerRadius / 2
+                color: browseHover.containsMouse ? root.selectedBackground : "transparent"
+                border.width: 1
+                border.color: root.border
+
+                Text {
+                  id: browseBtnText
+                  anchors.centerIn: parent
+                  text: "󰉋 Browse"
+                  color: root.selectedText
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                }
+                MouseArea {
+                  id: browseHover
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.browseDownloadLocation()
+                }
+              }
             }
           }
 
