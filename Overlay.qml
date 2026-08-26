@@ -135,34 +135,10 @@ Item {
   }
 
   function browseDownloadLocation() {
-    // Try service first (for host integration)
-    if (root.service && typeof root.service.pickDirectory === "function") {
-      root.service.pickDirectory(function(selectedPath) {
-        if (selectedPath) {
-          root.downloadLocation = selectedPath
-          root.setSetting("downloadLocation", selectedPath)
-          downloadPathInput.text = selectedPath
-        }
-      })
-    } else {
-      // Fallback: use system file dialog (kdialog for KDE, zenity for GNOME)
-      var expandedPath = root.expandPath(root.downloadLocation)
-      var cmd = [
-        "bash", "-c",
-        "kdialog --getexistingdirectory \"" + expandedPath + "\" 2>/dev/null || zenity --file-selection --directory --filename=\"" + expandedPath + "\" 2>/dev/null"
-      ]
-      var proc = Quickshell.exec(cmd)
-      proc.onFinished.connect(function(code) {
-        if (code === 0) {
-          var path = String(proc.stdout).trim()
-          if (path && path.length > 0) {
-            root.downloadLocation = path
-            root.setSetting("downloadLocation", path)
-            downloadPathInput.text = path
-          }
-        }
-      })
-    }
+    // Use the same omarchy-file-select portal that pickAndSend uses,
+    // but request directory selection instead of files
+    if (dirPickProc.running) return
+    dirPickProc.running = true
   }
 
   // QR regenerates when a fresh code appears. qrencode's ASCII output uses
@@ -196,6 +172,23 @@ Item {
     id: qrProc
     stdout: StdioCollector {
       onStreamFinished: root.setQrMatrix(text)
+    }
+  }
+
+  // Portal directory chooser — same as the file picker, but with
+  // --directory flag to select only directories.
+  Process {
+    id: dirPickProc
+    command: ["sh", "-c", "{ omarchy-file-select --directory --title 'Download location' 2>/dev/null || true; } | head -c 4096"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var path = text.trim()
+        if (path && path.charAt(0) === "/" && path.length > 0) {
+          root.downloadLocation = path
+          root.setSetting("downloadLocation", path)
+          downloadPathInput.text = path
+        }
+      }
     }
   }
 
